@@ -12,7 +12,7 @@ class Profiler
     protected function __construct()
     {
         $this->initProfiler();
-        $this->debug_args = getenv('PROFILE_TRACE_ARGS') ? 0 : DEBUG_BACKTRACE_IGNORE_ARGS;
+        $this->debug_args = getenv('PROFILER_TRACE_ARGS') ? 0 : DEBUG_BACKTRACE_IGNORE_ARGS;
     }
 
     /**
