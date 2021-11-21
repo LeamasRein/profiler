@@ -3,8 +3,8 @@
     "description": "Native PHP profiler",
     "type": "library",
     "autoload": {
+        "files": ["src/Profiler.php"],
         "psr-4": {
-            "files": ["src/Profiler.php"],
             "rein\\profiler\\": "src/"
         }
     },
