@@ -4,6 +4,7 @@ namespace rein\profiler;
 class Profiler
 {
     protected array $timestamps = [];
+    protected int $debug_args;
 
     /** @var callable|null $onShutdown */
     public $onShutdown = null;
@@ -11,6 +12,7 @@ class Profiler
     protected function __construct()
     {
         $this->initProfiler();
+        $this->debug_args = getenv('PROFILE_TRACE_ARGS') ? 0 : DEBUG_BACKTRACE_IGNORE_ARGS;
     }
 
     /**
@@ -23,7 +25,7 @@ class Profiler
         if(!empty($profiler_web_key) && $this->isProfileTraceLink($_SERVER['REQUEST_URI'] ?? ''))
             return 'TRACE';
 
-        return mb_strtoupper(getenv('PROFILE_MODE'));
+        return mb_strtoupper(getenv('PROFILER_MODE'));
     }
 
     protected function unparse_url(array $parsed_url):string
@@ -148,10 +150,6 @@ class Profiler
 
                 /** add tracer array */
                 $this->timestamps['tracker'] = [];
-                
-                /** include redirects by custom framework */
-                if(class_exists('custom', false))
-                    forward_static_call(['custom', 'hook'], ['custom.autoload.include', [$this, 'include']]);
 
                 /** register tracker */
                 register_tick_function([$this, 'registerTickTracker']);
@@ -191,7 +189,7 @@ class Profiler
 
         $code = @file_get_contents($filename);
         $code = preg_replace('#\s*\<\?php#sui', '', $code);
-        $code = preg_replace('#\?\>\s*$sui', '', $code);
+        $code = preg_replace('#\?\>\s*$#sui', '', $code);
         $code = "declare(ticks=1);$code";
 
         eval($code);
@@ -215,12 +213,12 @@ class Profiler
      */
     public function registerShutdownTracker():void
     {
-        $this->closeLastTracker();
-
         $this->timestamps['shutdown'] = microtime(true);
         $this->timestamps['executionTime'] = $this->timestamps['shutdown'] - $this->timestamps['startup'];
         if(isset($this->timestamps['tracker']))
         {
+            $this->closeLastTracker();
+
             $this->timestamps['funcExecutionTime'] = 0;
             foreach($this->timestamps['tracker'] as $tracker)
                 $this->timestamps['funcExecutionTime']+= $tracker['executionTime'];
@@ -234,8 +232,8 @@ class Profiler
         elseif(class_exists('custom', false))
         {
             /** add hook by custom framework */
-            forward_static_call(['custom', 'hook'], ['rein.profiler.results'])
-                ->trigger($this->timestamps);
+            forward_static_call(['custom', 'hook'], [])
+                ->run('rein.profiler.results', $this->timestamps);
         }
     }
 
@@ -275,7 +273,7 @@ class Profiler
             }
             else
             {
-                if($value !== $array2[$key] ?? null)
+                if($value !== ($array2[$key] ?? null))
                     return true;
             }
         }
@@ -295,7 +293,7 @@ class Profiler
          */
         static $nullTimestamp = null;
 
-        $caller = (array) (debug_backtrace(0,2)[1] ?? null);
+        $caller = (array) (debug_backtrace($this->debug_args, 2)[1] ?? null);
         if($caller)
         {
             /**
@@ -316,11 +314,18 @@ class Profiler
 
                 $this->closeLastTracker();
 
+                $id = implode([
+                    $caller['class'] ?? '',
+                    $caller['type'] ?? '',
+                    $caller['function'] ?? '',
+                ]);
+
                 $this->timestamps['tracker'][] = [
                     'timestamp' => $nullTimestamp ?? microtime(true),
-                    'id' => "$caller[class]$caller[type]$caller[function]",
+                    'id' => $id,
                     'executionTime' => 0,
                     'raw' => $caller,
+                    'stack' => array_slice(debug_backtrace($this->debug_args, 10), 3),
                     'ended' => false,
                 ];
                 $nullTimestamp = null;
