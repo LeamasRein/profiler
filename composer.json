@@ -1,0 +1,21 @@
+{
+    "name": "rein/profiler",
+    "description": "Native PHP profiler",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "files": ["src/Profiler.php"],
+            "rein\\profiler\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Rein",
+            "email": "rein@nuka-cola.ru"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=7.4"
+    }
+}
